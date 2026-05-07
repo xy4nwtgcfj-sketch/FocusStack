@@ -1,133 +1,84 @@
-import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useState } from 'react';
+import { Plus, CheckCircle2 } from 'lucide-react';
 import AufgabeItem from '../components/AufgabeItem';
 import AufgabeFormModal from '../components/AufgabeFormModal';
-import {
-  aktualisiereAufgabe,
-  ladeAufgaben,
-  speichereAufgabe,
-} from '../storage';
+import { aktualisiereAufgabe, ladeAufgaben, speichereAufgabe } from '../storage';
 import { Aufgabe } from '../types';
 
 export default function AufgabenScreen() {
-  const [aufgaben, setAufgaben] = useState<Aufgabe[]>([]);
-  const [modalSichtbar, setModalSichtbar] = useState(false);
+  const [aufgaben, setAufgaben] = useState<Aufgabe[]>(ladeAufgaben);
+  const [modalOffen, setModalOffen] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      ladeAufgaben().then(setAufgaben);
-    }, [])
-  );
-
-  async function handleToggle(id: string) {
+  function handleToggle(id: string) {
     const aufgabe = aufgaben.find((a) => a.id === id);
     if (!aufgabe) return;
-    const aktualisiert = await aktualisiereAufgabe(id, { erledigt: !aufgabe.erledigt });
+    const aktualisiert = aktualisiereAufgabe(id, { erledigt: !aufgabe.erledigt });
     setAufgaben((prev) => prev.map((a) => (a.id === id ? aktualisiert : a)));
   }
 
-  async function handleSave(daten: { titel: string; projekt?: string; geschaetzteDauer: number; deadline?: string }) {
-    const neu = await speichereAufgabe(daten);
+  function handleSave(daten: { titel: string; projekt?: string; geschaetzteDauer: number; deadline?: string }) {
+    const neu = speichereAufgabe(daten);
     setAufgaben((prev) => [neu, ...prev]);
   }
 
   const offene = aufgaben.filter((a) => !a.erledigt);
   const erledigte = aufgaben.filter((a) => a.erledigt);
-  const sortiert = [...offene, ...erledigte];
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={sortiert}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <AufgabeItem aufgabe={item} onToggle={handleToggle} />
+    <div className="flex flex-col h-full relative">
+      <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+        {aufgaben.length > 0 && (
+          <p className="text-xs font-medium text-gray-400 px-1">
+            {offene.length} offen · {erledigte.length} erledigt
+          </p>
         )}
-        contentContainerStyle={sortiert.length === 0 ? styles.leerContainer : styles.liste}
-        ListHeaderComponent={
-          sortiert.length > 0 ? (
-            <Text style={styles.anzahl}>
-              {offene.length} offen · {erledigte.length} erledigt
-            </Text>
-          ) : null
-        }
-        ListEmptyComponent={
-          <View style={styles.leer}>
-            <Ionicons name="checkmark-circle-outline" size={64} color="#D1D5DB" />
-            <Text style={styles.leerTitel}>Noch keine Aufgaben</Text>
-            <Text style={styles.leerText}>
-              Tippe auf "+" um deine erste Aufgabe hinzuzufügen.
-            </Text>
-          </View>
-        }
-      />
 
-      <Pressable style={styles.fab} onPress={() => setModalSichtbar(true)}>
-        <Ionicons name="add" size={28} color="#fff" />
-      </Pressable>
+        {/* Offene Aufgaben */}
+        {offene.length > 0 && (
+          <div className="space-y-2">
+            {offene.map((a) => (
+              <AufgabeItem key={a.id} aufgabe={a} onToggle={handleToggle} />
+            ))}
+          </div>
+        )}
+
+        {/* Erledigte */}
+        {erledigte.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-400 px-1 mb-2">Erledigt</p>
+            <div className="space-y-2">
+              {erledigte.map((a) => (
+                <AufgabeItem key={a.id} aufgabe={a} onToggle={handleToggle} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Leerer Zustand */}
+        {aufgaben.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+              <CheckCircle2 size={32} className="text-gray-300" />
+            </div>
+            <p className="text-base font-bold text-gray-600">Noch keine Aufgaben</p>
+            <p className="text-sm text-gray-400">Tippe auf + um deine erste Aufgabe hinzuzufügen.</p>
+          </div>
+        )}
+      </div>
+
+      {/* FAB */}
+      <button
+        onClick={() => setModalOffen(true)}
+        className="absolute bottom-6 right-5 w-14 h-14 rounded-full bg-brand flex items-center justify-center shadow-lg shadow-brand/40 active:scale-95 transition-transform"
+      >
+        <Plus size={28} strokeWidth={2.5} className="text-white" />
+      </button>
 
       <AufgabeFormModal
-        visible={modalSichtbar}
-        onClose={() => setModalSichtbar(false)}
+        visible={modalOffen}
+        onClose={() => setModalOffen(false)}
         onSave={handleSave}
       />
-    </View>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  liste: {
-    paddingTop: 16,
-    paddingBottom: 100,
-  },
-  leerContainer: {
-    flex: 1,
-  },
-  anzahl: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-    marginHorizontal: 16,
-    marginBottom: 12,
-  },
-  leer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  leerTitel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#374151',
-  },
-  leerText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 28,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#4F6BFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#4F6BFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-});

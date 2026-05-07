@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -28,7 +28,7 @@ export default function AufgabenScreen() {
     setAufgaben((prev) => prev.map((a) => (a.id === id ? aktualisiert : a)));
   }
 
-  async function handleSave(daten: { titel: string; projekt?: string; geschaetzteDauer: number }) {
+  async function handleSave(daten: { titel: string; projekt?: string; geschaetzteDauer: number; deadline?: string }) {
     const neu = await speichereAufgabe(daten);
     setAufgaben((prev) => [neu, ...prev]);
   }

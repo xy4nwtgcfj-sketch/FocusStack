@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
-import { Aufgabe } from './types';
+import { Aufgabe, Zeiteintrag } from './types';
 
 const STORAGE_KEY = '@focusstack/aufgaben';
 
@@ -44,4 +44,32 @@ export async function loescheAufgabe(id: string): Promise<void> {
 
 export async function loescheAlleAufgaben(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEY);
+}
+
+// ─── Zeiteinträge ────────────────────────────────────────────────────────────
+
+const ZEIT_KEY = '@focusstack/zeiteintraege';
+
+export async function ladeZeiteintraege(): Promise<Zeiteintrag[]> {
+  const json = await AsyncStorage.getItem(ZEIT_KEY);
+  return json ? (JSON.parse(json) as Zeiteintrag[]) : [];
+}
+
+export async function speichereZeiteintrag(
+  daten: Omit<Zeiteintrag, 'id'>
+): Promise<Zeiteintrag> {
+  const alle = await ladeZeiteintraege();
+  const eintrag: Zeiteintrag = { ...daten, id: uuidv4() };
+  await AsyncStorage.setItem(ZEIT_KEY, JSON.stringify([...alle, eintrag]));
+  return eintrag;
+}
+
+export async function ladeHeutigeZeiteintraege(): Promise<Zeiteintrag[]> {
+  const alle = await ladeZeiteintraege();
+  const heute = new Date().toDateString();
+  return alle.filter((e) => new Date(e.startzeit).toDateString() === heute);
+}
+
+export async function loescheAlleZeiteintraege(): Promise<void> {
+  await AsyncStorage.removeItem(ZEIT_KEY);
 }
